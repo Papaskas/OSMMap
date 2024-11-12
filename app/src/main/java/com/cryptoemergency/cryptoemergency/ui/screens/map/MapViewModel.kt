@@ -2,6 +2,8 @@ package com.cryptoemergency.cryptoemergency.ui.screens.map
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.location.Address
+import android.location.Geocoder
 import android.location.Location
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateListOf
@@ -13,6 +15,7 @@ import com.cryptoemergency.cryptoemergency.api.store.ProtoStore
 import com.cryptoemergency.cryptoemergency.repository.requests.getRoute.getRouteRequest
 import com.cryptoemergency.cryptoemergency.repository.store.data.Mark
 import com.cryptoemergency.cryptoemergency.repository.store.data.Markers
+import dagger.hilt.android.internal.Contexts.getApplication
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +27,7 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Marker.ANCHOR_BOTTOM
 import org.osmdroid.views.overlay.Marker.ANCHOR_CENTER
 import org.osmdroid.views.overlay.Polyline
+import java.util.Locale
 import javax.inject.Inject
 
 
@@ -50,8 +54,9 @@ class MapViewModel @Inject constructor(
 
                 res.forEach {
                     addMarker(
-                        GeoPoint(it.latitude, it.longitude),
-                        it.title,
+                        geoPoint = GeoPoint(it.latitude, it.longitude),
+                        title = it.title,
+                        isLoadingFromStorage = true
                     )
                 }
             }
@@ -120,18 +125,19 @@ class MapViewModel @Inject constructor(
 
     fun addMarker(
         geoPoint: GeoPoint,
-        markerTitle: String = "Точка на карте",
+        title: String = "Точка на карте",
+        isLoadingFromStorage: Boolean = false,
     ) {
         val marker = Marker(mapView)
 
-        markers.add(CustomMarker(geoPoint, mutableStateOf(markerTitle)))
+        markers.add(CustomMarker(geoPoint, mutableStateOf(title)))
 
         viewModelScope.launch {
             val currentMarkers = markersStore.get()
             val updatedMarkers = currentMarkers.copy(markers = currentMarkers.markers + Mark(
                 longitude = geoPoint.longitude,
                 latitude = geoPoint.latitude,
-                title = markerTitle,
+                title = title,
             ))
 
             markersStore.put(updatedMarkers)
@@ -139,7 +145,7 @@ class MapViewModel @Inject constructor(
 
         marker.position = geoPoint
         marker.setAnchor(ANCHOR_CENTER, ANCHOR_BOTTOM)
-        marker.title = markerTitle
+        marker.title = title
 
         marker.setOnMarkerClickListener { _, _ ->
             selectedMarker.value = markers.find { marker ->
@@ -152,6 +158,13 @@ class MapViewModel @Inject constructor(
 
         mapView.overlays.add(marker)
         mapView.invalidate()
+
+
+        if (isLoadingFromStorage) return
+        selectedMarker.value = markers.find {
+            it.geoPoint == geoPoint
+        }
+        showModal.value = true
     }
 
     fun addMarkCurrentPosition(location: Location) {
@@ -180,6 +193,23 @@ class MapViewModel @Inject constructor(
                 )
 
                 markersStore.put(updatedMarkers)
+            }
+        }
+    }
+
+    suspend fun getAddress(geoPoint: GeoPoint): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                val geocoder = Geocoder(getApplication(context), Locale.getDefault())
+                val addresses: List<Address>? = geocoder.getFromLocation(geoPoint.latitude, geoPoint.longitude, 1)
+                if (!addresses.isNullOrEmpty()) {
+                    val address = addresses[0]
+                    address.getAddressLine(0)
+                } else {
+                    "Address not found"
+                }
+            } catch (e: Exception) {
+                "Unable to get address: ${e.message}"
             }
         }
     }

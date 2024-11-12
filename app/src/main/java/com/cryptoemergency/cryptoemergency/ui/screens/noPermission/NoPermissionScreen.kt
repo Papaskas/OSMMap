@@ -38,7 +38,6 @@ fun NoPermissionScreen(onRequestPermission: () -> Unit) {
             }) {
                 Text(text = "Дать разрешение в настройках")
             }
-
         }
     }
 }

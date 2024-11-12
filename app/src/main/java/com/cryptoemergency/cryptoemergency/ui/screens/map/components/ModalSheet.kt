@@ -13,6 +13,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -24,6 +29,13 @@ import org.osmdroid.util.GeoPoint
 @Composable
 fun ModalSheet(vm: MapViewModel) {
     val location = LocalLocation.current.location.value
+    var address by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(vm.selectedMarker.value) {
+        vm.selectedMarker.value?.geoPoint?.let {
+            address = vm.getAddress(it)
+        }
+    }
 
     if (vm.showModal.value) {
         ModalBottomSheet(
@@ -33,6 +45,12 @@ fun ModalSheet(vm: MapViewModel) {
             }
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
+
+                address?.let {
+                    Text(it)
+                }
+
+                Spacer(Modifier.height(15.dp))
 
                 vm.selectedMarker.value?.title?.let {
                     TextField(
