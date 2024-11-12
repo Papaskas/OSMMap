@@ -30,12 +30,6 @@ fun NoPermissionScreen(onRequestPermission: () -> Unit) {
             Text(text = "Пожалуйста, дайте точное разрешение на геолокацию")
 
             Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = { onRequestPermission() }
-            ) {
-                Text(text = "Повторить")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = {
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     data = Uri.fromParts("package", context.packageName, null)
